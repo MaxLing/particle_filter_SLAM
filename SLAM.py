@@ -1,5 +1,5 @@
+import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import load_data as ld
 import p4_util as util
 from SLAM_functions import *
@@ -13,18 +13,12 @@ def main():
     # load and process data
     joint_data, lidar_data, lidar_angles = data_preprocess(joint_dir, lidar_dir)
 
-    # init
-    Map, Particles = init_SLAM()
-    Trajectory = []
+    # init SLAM
+    Map, Particles, Trajectory = init_SLAM()
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.grid(color='gray', linestyle='--', linewidth='0.5')
-    hits, = ax.plot([], [], 'b')
-    occ, = ax.plot([], [], 'k')
-    free, = ax.plot([], [], 'r')
-    pose, = ax.plot([], [], 'g*', markersize=10)
-    # traj, = ax.plot([], [], 'b')
+    # init plot
+    h, w = Map['map'].shape
+    Plot = np.zeros((h,w,3),np.uint8)
 
     for lidar_idx in range(10):
         Pose = Particles['poses'][:, Particles['best_idx']] # TODO: now only the best particle is used
@@ -44,7 +38,6 @@ def main():
         not_floor = world_hit[2,:]>0.1
         world_hit = world_hit[:,not_floor]
 
-        # TODO: bug after here
         # update map according to hit
         update_map(world_hit[:2], Pose[:2], Map)
 
@@ -52,19 +45,12 @@ def main():
 
 
 
-
         # Plot
-        occ_, free_ = map2plot(Map)
-        hits.set_data(world_hit[0], world_hit[1])
-        occ.set_data(occ_[0], occ_[1])
-        free.set_data(free_[0], free_[1])
-        pose.set_data(Pose[0], Pose[1])
+        plot_all(Map, Trajectory, Plot)
 
-        # resize and plot map
-        plt.xlim(np.min(occ_[0]), np.max(occ_[0]))
-        plt.ylim(np.min(occ_[1]), np.max(occ_[1]))
-        fig.canvas.draw()
-        plt.pause(0.001)
+        print(0)
+
+
 
 def data_preprocess(joint_dir, lidar_dir):
     joint_data = ld.get_joint(joint_dir)
@@ -77,24 +63,6 @@ def data_preprocess(joint_dir, lidar_dir):
     lidar_angles = np.linspace(start=-135*np.pi/180, stop=135*np.pi/180, num=num_beams).reshape(1,-1)
 
     return joint_data, lidar_data, lidar_angles
-
-def init_SLAM():
-    Map = {}
-    Map['res'] = 20 # cells / m
-    Map['size'] = 50 # m
-    Map['map'] = np.zeros((Map['res']*Map['size'], Map['res']*Map['size'])) # log odds
-    belief = 0.9 # prob of lidar hit if the grid is occupied
-    Map['occ_d'] = np.log(belief/(1-belief))
-    Map['free_d'] = np.log((1-belief)/belief)*.5
-    # TODO: set a bound for log odds
-
-    Particles = {}
-    Particles['nums'] = 10
-    Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
-    Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['best_idx'] = 0
-
-    return Map, Particles
 
 
 

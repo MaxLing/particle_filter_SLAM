@@ -1,6 +1,26 @@
 import numpy as np
 import cv2
 
+def init_SLAM():
+    Map = {}
+    Map['res'] = 20 # cells / m
+    Map['size'] = 50 # m
+    Map['map'] = np.zeros((Map['res']*Map['size'], Map['res']*Map['size'])) # log odds
+    belief = 0.9 # prob of lidar hit if the grid is occupied
+    Map['occ_d'] = np.log(belief/(1-belief))
+    Map['free_d'] = np.log((1-belief)/belief)*.5
+    # TODO: set a bound for log odds
+
+    Particles = {}
+    Particles['nums'] = 10
+    Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
+    Particles['poses'] = np.zeros((3, Particles['nums']))
+    Particles['best_idx'] = 0
+
+    Trajectory = []
+
+    return Map, Particles, Trajectory
+
 def polar2cart(scan, angles):
     x = scan * np.cos(angles)
     y = scan * np.sin(angles)
@@ -74,23 +94,29 @@ def update_map(hit, pose, Map):
     cv2.drawContours(image=mask, contours = [contour.T], contourIdx = -1, color = Map['free_d'], thickness=-1)
     Map['map'] += mask
 
-    # debug purpose
-    occ_grid = 1 - 1 / (1 + np.exp(Map['map']))
-    cv2.imshow('test', occ_grid)
-    cv2.waitKey(0)
+    # # for debug purpose
+    # occ_grid = 1 - 1 / (1 + np.exp(Map['map']))
+    # cv2.imshow('test', occ_grid)
+    # cv2.waitKey(0)
 
 
-def map2plot(Map):
-    occ_grid = 1-1/(1+np.exp(Map['map']))
-    # find occupied and free grid
-    occ = np.where(occ_grid>0.75)
-    free = np.where(occ_grid<0.25)
 
-    # transform origin from upper left to center, pixel to meter
-    center = Map['size'] * Map['res'] / 2
-    occ_x = (occ[0]-center)/Map['res']
-    occ_y = (center-occ[1])/Map['res']
-    free_x = (free[0]-center)/Map['res']
-    free_y = (center-free[1])/Map['res']
 
-    return np.vstack((occ_x, occ_y)), np.vstack((free_x, free_y))
+
+
+
+
+def plot_all(Map, Trajectory, Plot):
+    # paint occ, free and und
+    prob_map = 1-1/(1+np.exp(Map['map']))
+    occ_mask = prob_map>0.7
+    free_mask = prob_map<0.3
+    und_mask = np.logical_not(np.logical_or(occ_mask, free_mask))
+    Plot[occ_mask] = [0,0,0] # black for occ
+    Plot[free_mask] = [255,255,255] # white for free
+    Plot[und_mask] = [128,128,128] # gray for und
+
+    # show the plot
+    cv2.imshow('SLAM', Plot)
+    cv2.waitKey(10)
+
