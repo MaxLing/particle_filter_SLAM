@@ -20,8 +20,9 @@ def main():
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.grid(color='gray', linestyle='--', linewidth='0.5')
+    hits, = ax.plot([], [], 'b')
     occ, = ax.plot([], [], 'k')
-    free, = ax.plot([], [], 'w')
+    free, = ax.plot([], [], 'r')
     pose, = ax.plot([], [], 'g*', markersize=10)
     # traj, = ax.plot([], [], 'b')
 
@@ -40,28 +41,28 @@ def main():
 
         # transform hit from lidar to world coordinate, remove ground hitting
         world_hit = lidar2world(lidar_hit, joint_angles, Pose)
-        not_floor = world_hit[2,:]>0.2
+        not_floor = world_hit[2,:]>0.1
         world_hit = world_hit[:,not_floor]
 
+        # TODO: bug after here
         # update map according to hit
         update_map(world_hit[:2], Pose[:2], Map)
-
 
         # Localization
 
 
 
 
-        # update plot
+        # Plot
         occ_, free_ = map2plot(Map)
+        hits.set_data(world_hit[0], world_hit[1])
         occ.set_data(occ_[0], occ_[1])
         free.set_data(free_[0], free_[1])
         pose.set_data(Pose[0], Pose[1])
 
-        # resize map
+        # resize and plot map
         plt.xlim(np.min(occ_[0]), np.max(occ_[0]))
         plt.ylim(np.min(occ_[1]), np.max(occ_[1]))
-
         fig.canvas.draw()
         plt.pause(0.001)
 

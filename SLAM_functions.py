@@ -65,15 +65,20 @@ def update_map(hit, pose, Map):
     # transform hit to occ grid and check boundary
     occ = world2map(hit, Map)
 
-    # update log odds for occupied grid
-    Map['map'][occ[0], occ[1]] += Map['occ_d']-Map['free_d'] # will add back later
+    # update log odds for occupied grid, Note: pixels access should be (column, row)
+    Map['map'][occ[1], occ[0]] += Map['occ_d']-Map['free_d'] # will add back later
 
-    # update log odss for free grid, using contours to mask region between pose and hit
+    # update log odds for free grid, using contours to mask region between pose and hit
     mask = np.zeros(Map['map'].shape)
-
     contour = np.hstack((world2map(pose, Map).reshape(-1,1), occ))
     cv2.drawContours(image=mask, contours = [contour.T], contourIdx = -1, color = Map['free_d'], thickness=-1)
     Map['map'] += mask
+
+    # debug purpose
+    occ_grid = 1 - 1 / (1 + np.exp(Map['map']))
+    cv2.imshow('test', occ_grid)
+    cv2.waitKey(0)
+
 
 def map2plot(Map):
     occ_grid = 1-1/(1+np.exp(Map['map']))
