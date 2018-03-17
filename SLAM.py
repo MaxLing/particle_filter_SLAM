@@ -54,7 +54,7 @@ def main():
 
 
         # Plot
-        if lidar_idx%10==0:
+        if lidar_idx%50==0:
             plot_all(Map, Trajectory, Plot)
 
 
@@ -68,7 +68,7 @@ def data_preprocess(joint_dir, lidar_dir):
     num_beams = lidar_data[0]['scan'].shape[1]
     lidar_angles = np.linspace(start=-135*np.pi/180, stop=135*np.pi/180, num=num_beams).reshape(1,-1)
 
-    # remove theta bias for odometry
+    # remove bias for odometry, init pose is (0,0,0)
     yaw_bias = lidar_data[0]['rpy'][0,2]
     pose_bias = lidar_data[0]['pose'][0,:2]
     for i in range(len(lidar_data)):

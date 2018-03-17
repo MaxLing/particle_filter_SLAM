@@ -6,14 +6,14 @@ def init_SLAM():
     Map['res'] = 20 # cells / m
     Map['size'] = 50 # m
     Map['map'] = np.zeros((Map['res']*Map['size'], Map['res']*Map['size'])) # log odds
-    belief = 0.6 # prob of lidar hit if the grid is occupied
+    belief = 0.7 # prob of lidar hit if the grid is occupied
     Map['occ_d'] = np.log(belief/(1-belief))
     Map['free_d'] = np.log((1-belief)/belief)*.5
     occ_thres = 0.85
     free_thres = 0.25
     Map['occ_thres'] = np.log(occ_thres / (1 - occ_thres))
     Map['free_thres'] = np.log(free_thres/(1-free_thres))
-    # TODO: set a bound for log odds
+    Map['bound'] = 10
 
     Particles = {}
     Particles['nums'] = 10
@@ -97,10 +97,9 @@ def update_map(hit, pose, Map):
     cv2.drawContours(image=mask, contours = [contour.T], contourIdx = -1, color = Map['free_d'], thickness=-1)
     Map['map'] += mask
 
-    # # for debug purpose
-    # occ_grid = 1 - 1 / (1 + np.exp(Map['map']))
-    # cv2.imshow('test', occ_grid)
-    # cv2.waitKey(0)
+    # keep log odds within boundary, to allow recovery
+    Map['map'][Map['map']>Map['bound']] = Map['bound']
+    Map['map'][Map['map']<-Map['bound']] = -Map['bound']
 
 def odom_predict(Pose, curr_xy, curr_theta, prev_xy, prev_theta):
     # relative movement in local frame (odom is in global frame)
