@@ -15,13 +15,15 @@ def main():
 
     # init SLAM
     Map, Particles, Trajectory = init_SLAM()
+    Pose = np.zeros(3)
 
     # init plot
     h, w = Map['map'].shape
     Plot = np.zeros((h,w,3),np.uint8)
 
-    for lidar_idx in range(10):
-        Pose = Particles['poses'][:, Particles['best_idx']] # TODO: now only the best particle is used
+    for lidar_idx in range(len(lidar_data)):
+        # Pose = Particles['poses'][:, Particles['best_idx']] # TODO: now only the best particle is used
+        Trajectory.append(np.copy(Pose))
 
         # Mapping
         # extract lidar scan in good range and transform to lidar's cart coordinate
@@ -41,15 +43,19 @@ def main():
         # update map according to hit
         update_map(world_hit[:2], Pose[:2], Map)
 
+
         # Localization
+        if lidar_idx == 0:
+            continue # no prev odometry
+
+        odom_predict(Pose, lidar_data[lidar_idx]['pose'][0,:2], lidar_data[lidar_idx]['rpy'][0,2],
+                     lidar_data[lidar_idx-1]['pose'][0,:2], lidar_data[lidar_idx-1]['rpy'][0,2])
 
 
 
         # Plot
-        plot_all(Map, Trajectory, Plot)
-
-        print(0)
-
+        if lidar_idx%10==0:
+            plot_all(Map, Trajectory, Plot)
 
 
 def data_preprocess(joint_dir, lidar_dir):
@@ -61,6 +67,13 @@ def data_preprocess(joint_dir, lidar_dir):
     # get lidar angles
     num_beams = lidar_data[0]['scan'].shape[1]
     lidar_angles = np.linspace(start=-135*np.pi/180, stop=135*np.pi/180, num=num_beams).reshape(1,-1)
+
+    # remove theta bias for odometry
+    yaw_bias = lidar_data[0]['rpy'][0,2]
+    pose_bias = lidar_data[0]['pose'][0,:2]
+    for i in range(len(lidar_data)):
+        lidar_data[i]['rpy'][0,2] -= yaw_bias
+        lidar_data[i]['pose'][0,:2] -= pose_bias
 
     return joint_data, lidar_data, lidar_angles
 

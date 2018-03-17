@@ -6,7 +6,7 @@ def init_SLAM():
     Map['res'] = 20 # cells / m
     Map['size'] = 50 # m
     Map['map'] = np.zeros((Map['res']*Map['size'], Map['res']*Map['size'])) # log odds
-    belief = 0.9 # prob of lidar hit if the grid is occupied
+    belief = 0.7 # prob of lidar hit if the grid is occupied
     Map['occ_d'] = np.log(belief/(1-belief))
     Map['free_d'] = np.log((1-belief)/belief)*.5
     # TODO: set a bound for log odds
@@ -70,9 +70,8 @@ def lidar2world(lidar_hit, joint_angles, pose):
 
 def world2map(xy, Map):
     # transform origin from center to upper left, meter to pixel
-    xy_map = np.copy(xy)
-    xy_map[1] *= -1
-    pixels = ((xy_map + Map['size']/2)*Map['res']).astype(np.int)
+    xy[1] *= -1
+    pixels = ((xy + Map['size']/2)*Map['res']).astype(np.int)
 
     # check boundary and keep pixels within
     center = Map['size']*Map['res']/2
@@ -99,22 +98,34 @@ def update_map(hit, pose, Map):
     # cv2.imshow('test', occ_grid)
     # cv2.waitKey(0)
 
+def odom_predict(Pose, curr_xy, curr_theta, prev_xy, prev_theta):
+    # relative movement in local frame (odom is in global frame)
+    d_theta = curr_theta - prev_theta
+    R_local = np.array([[np.cos(prev_theta), -np.sin(prev_theta)],
+                       [np.sin(prev_theta), np.cos(prev_theta)]])
+    d_xy = np.dot(R_local.T, (curr_xy-prev_xy).reshape((-1,1)))
 
-
-
-
-
+    # apply relative movement and convert to global frame
+    R_global = np.array([[np.cos(Pose[2]), -np.sin(Pose[2])],
+                        [np.sin(Pose[2]), np.cos(Pose[2])]])
+    Pose[:2] += np.dot(R_global, d_xy).reshape(-1)
+    Pose[2] += d_theta
 
 
 def plot_all(Map, Trajectory, Plot):
     # paint occ, free and und
     prob_map = 1-1/(1+np.exp(Map['map']))
-    occ_mask = prob_map>0.7
-    free_mask = prob_map<0.3
+    occ_mask = prob_map>0.8
+    free_mask = prob_map<0.2
     und_mask = np.logical_not(np.logical_or(occ_mask, free_mask))
     Plot[occ_mask] = [0,0,0] # black for occ
     Plot[free_mask] = [255,255,255] # white for free
     Plot[und_mask] = [128,128,128] # gray for und
+
+    # paint trajectory
+    traj = np.asarray(Trajectory)[:,:2]
+    traj_pixel = world2map(traj.T, Map)
+    Plot[traj_pixel[1],traj_pixel[0]] = [255,0,0] # blue for trajectory
 
     # show the plot
     cv2.imshow('SLAM', Plot)
