@@ -6,9 +6,13 @@ def init_SLAM():
     Map['res'] = 20 # cells / m
     Map['size'] = 50 # m
     Map['map'] = np.zeros((Map['res']*Map['size'], Map['res']*Map['size'])) # log odds
-    belief = 0.7 # prob of lidar hit if the grid is occupied
+    belief = 0.6 # prob of lidar hit if the grid is occupied
     Map['occ_d'] = np.log(belief/(1-belief))
     Map['free_d'] = np.log((1-belief)/belief)*.5
+    occ_thres = 0.85
+    free_thres = 0.25
+    Map['occ_thres'] = np.log(occ_thres / (1 - occ_thres))
+    Map['free_thres'] = np.log(free_thres/(1-free_thres))
     # TODO: set a bound for log odds
 
     Particles = {}
@@ -114,9 +118,8 @@ def odom_predict(Pose, curr_xy, curr_theta, prev_xy, prev_theta):
 
 def plot_all(Map, Trajectory, Plot):
     # paint occ, free and und
-    prob_map = 1-1/(1+np.exp(Map['map']))
-    occ_mask = prob_map>0.8
-    free_mask = prob_map<0.2
+    occ_mask = Map['map']>Map['occ_thres']
+    free_mask = Map['map']<Map['free_thres']
     und_mask = np.logical_not(np.logical_or(occ_mask, free_mask))
     Plot[occ_mask] = [0,0,0] # black for occ
     Plot[free_mask] = [255,255,255] # white for free
