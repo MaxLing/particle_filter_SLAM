@@ -15,15 +15,14 @@ def main():
 
     # init SLAM
     Map, Particles, Trajectory = init_SLAM()
-    Pose = np.zeros(3)
 
     # init plot
     h, w = Map['map'].shape
     Plot = np.zeros((h,w,3),np.uint8)
 
     for lidar_idx in range(len(lidar_data)):
-        # Pose = Particles['poses'][:, Particles['best_idx']] # TODO: now only the best particle is used
-        Trajectory.append(np.copy(Pose))
+        Pose = Particles['poses'][:, Particles['best_idx']] # TODO: only the best particle is used
+        Trajectory.append(Pose)
 
         # Mapping
         # extract lidar scan in good range and transform to lidar's cart coordinate
@@ -48,7 +47,7 @@ def main():
         if lidar_idx == 0:
             continue # no prev odometry
 
-        odom_predict(Pose, lidar_data[lidar_idx]['pose'][0,:2], lidar_data[lidar_idx]['rpy'][0,2],
+        odom_predict(Particles, lidar_data[lidar_idx]['pose'][0,:2], lidar_data[lidar_idx]['rpy'][0,2],
                      lidar_data[lidar_idx-1]['pose'][0,:2], lidar_data[lidar_idx-1]['rpy'][0,2])
 
 
@@ -77,7 +76,30 @@ def data_preprocess(joint_dir, lidar_dir):
 
     return joint_data, lidar_data, lidar_angles
 
+def init_SLAM():
+    Map = {}
+    Map['res'] = 20 # cells / m
+    Map['size'] = 50 # m
+    Map['map'] = np.zeros((Map['res']*Map['size'], Map['res']*Map['size'])) # log odds
+    belief = 0.7 # prob of lidar hit if the grid is occupied
+    Map['occ_d'] = np.log(belief/(1-belief))
+    Map['free_d'] = np.log((1-belief)/belief)*.5
+    occ_thres = 0.85
+    free_thres = 0.25
+    Map['occ_thres'] = np.log(occ_thres / (1 - occ_thres))
+    Map['free_thres'] = np.log(free_thres/(1-free_thres))
+    Map['bound'] = 10
 
+    Particles = {}
+    Particles['nums'] = 10
+    Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
+    Particles['poses'] = np.zeros((3, Particles['nums']))
+    Particles['best_idx'] = 0
+    Particles['noise_cov'] = [0.005, 0.005, 0.005]
+
+    Trajectory = []
+
+    return Map, Particles, Trajectory
 
 if __name__ == '__main__':
     main()
