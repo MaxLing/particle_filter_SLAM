@@ -21,7 +21,7 @@ def main():
     Plot = np.zeros((h,w,3),np.uint8)
 
     for lidar_idx in range(len(lidar_data)):
-        Pose = Particles['poses'][:, Particles['best_idx']] # TODO: only the best particle is used
+        Pose = Particles['poses'][:, Particles['best_idx']] # TODO: change idx to argmax
         Trajectory.append(np.copy(Pose))
 
         # Mapping
@@ -42,12 +42,15 @@ def main():
 
 
         # Localization
+        # no predict or update if no prev odometry
         if lidar_idx == 0:
-            continue # no prev odometry
+            continue
 
+        # predict particles pose by odom
         odom_predict(Particles, lidar_data[lidar_idx]['pose'][0,:2], lidar_data[lidar_idx]['rpy'][0,2],
                      lidar_data[lidar_idx-1]['pose'][0,:2], lidar_data[lidar_idx-1]['rpy'][0,2])
 
+        # update particles by lidar
         particle_update(Particles, Map, lidar_hit, joint_angles)
 
         # Plot

@@ -128,7 +128,7 @@ def odom_predict(Particles, curr_xy, curr_theta, prev_xy, prev_theta):
 def particle_update(Particles, Map, lidar_hit, joint_angles):
     # hit for each particles (particle num,3,beam num)
     particles_hit = lidar2world(lidar_hit, joint_angles, Particles=Particles)
-    
+
 
 
 def plot_all(Map, Trajectory, Lidar, Plot):
