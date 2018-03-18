@@ -7,7 +7,7 @@ def polar2cart(scan, angles):
     z = np.zeros(len(scan))
     return np.vstack((x, y, z))
 
-def lidar2world(lidar_hit, joint_angles, pose):
+def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
     neck_angle = joint_angles[0] # yaw wrt body frame
     head_angle = joint_angles[1] # pitch wrt body frame
 
@@ -29,24 +29,55 @@ def lidar2world(lidar_hit, joint_angles, pose):
     R_bh = np.dot(Rz,Ry)
     H_bh = np.dot(T_bh, R_bh)
 
-    # body wrt world
-    x_gb = pose[0]
-    y_gb = pose[1]
-    z_gb = 0.93
-    yaw_gb = pose[2]
-    R_gb = np.array([[np.cos(yaw_gb), -np.sin(yaw_gb), 0, 0],
-                    [np.sin(yaw_gb), np.cos(yaw_gb), 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1]])
-    T_gb = np.array([[1,0,0,x_gb],[0,1,0,y_gb],[0,0,1,z_gb],[0,0,0,1]])
-    H_gb = np.dot(T_gb, R_gb)
+    if Particles is None: # for mapping
+        # body wrt world
+        x_gb = pose[0]
+        y_gb = pose[1]
+        z_gb = 0.93
+        T_gb = np.array([[1, 0, 0, x_gb], [0, 1, 0, y_gb], [0, 0, 1, z_gb], [0, 0, 0, 1]])
+        yaw_gb = pose[2]
+        R_gb = np.array([[np.cos(yaw_gb), -np.sin(yaw_gb), 0, 0],
+                        [np.sin(yaw_gb), np.cos(yaw_gb), 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 0, 1]])
+        H_gb = np.dot(T_gb, R_gb)
 
-    # lidar wrt world
-    H_gl = H_gb.dot(H_bh).dot(H_hl)
-    lidar_hit = np.vstack((lidar_hit,np.ones((1,lidar_hit.shape[1])))) # 4*n
-    world_hit = np.dot(H_gl, lidar_hit)
+        # lidar wrt world
+        H_gl = H_gb.dot(H_bh).dot(H_hl)
+        lidar_hit = np.vstack((lidar_hit,np.ones((1,lidar_hit.shape[1])))) # 4*n
+        world_hit = np.dot(H_gl, lidar_hit)
 
-    return world_hit[:3,:]
+        # ground check, keep hits not on ground
+        not_floor = world_hit[2]>0.1
+        world_hit = world_hit[:,not_floor]
+
+        return world_hit[:3,:]
+
+    else: # for particles update
+        nums = Particles['nums']
+        poses = Particles['poses']
+        particles_hit = np.zeros((nums,3,lidar_hit.shape[1]))
+        lidar_hit = np.vstack((lidar_hit, np.ones((1, lidar_hit.shape[1]))))
+
+        for i in range(nums): # TODO: vectorize
+            # body wrt world
+            T_gb = np.array([[1, 0, 0, poses[0,i]], [0, 1, 0, poses[1,i]], [0, 0, 1, 0.93], [0, 0, 0, 1]])
+            R_gb = np.array([[np.cos(poses[2,i]), -np.sin(poses[2,i]), 0, 0],
+                            [np.sin(poses[2,i]), np.cos(poses[2,i]), 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]])
+            H_gb = np.dot(T_gb, R_gb)
+
+            # lidar wrt world
+            H_gl = H_gb.dot(H_bh).dot(H_hl)
+            world_hit = np.dot(H_gl, lidar_hit)[:3,:]
+
+            # ground check, keep hits not on ground
+            not_floor = world_hit[2] > 0.1
+            particles_hit[i, :, :] = world_hit[:, not_floor]
+
+        return particles_hit
+
 
 def world2map(xy, Map):
     # transform origin from center to upper left, meter to pixel
@@ -93,6 +124,11 @@ def odom_predict(Particles, curr_xy, curr_theta, prev_xy, prev_theta):
     # apply noise
     noise = np.random.normal([0,0,0],Particles['noise_cov'], size=(Particles['nums'],3))
     Particles['poses'] += noise.T
+
+def particle_update(Particles, Map, lidar_hit, joint_angles):
+    # hit for each particles (particle num,3,beam num)
+    particles_hit = lidar2world(lidar_hit, joint_angles, Particles=Particles)
+    
 
 
 def plot_all(Map, Trajectory, Lidar, Plot):

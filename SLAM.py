@@ -34,10 +34,8 @@ def main():
         joint_idx = np.argmin(np.abs(joint_data['ts']-lidar_data[lidar_idx]['t']))
         joint_angles = joint_data['head_angles'][:,joint_idx]
 
-        # transform hit from lidar to world coordinate, remove ground hitting
-        world_hit = lidar2world(lidar_hit, joint_angles, Pose)
-        not_floor = world_hit[2]>0.1
-        world_hit = world_hit[:,not_floor]
+        # transform hit from lidar to world coordinate, this step also remove ground hitting
+        world_hit = lidar2world(lidar_hit, joint_angles, pose=Pose)
 
         # update map according to hit
         update_map(world_hit[:2], Pose[:2], Map)
@@ -50,7 +48,7 @@ def main():
         odom_predict(Particles, lidar_data[lidar_idx]['pose'][0,:2], lidar_data[lidar_idx]['rpy'][0,2],
                      lidar_data[lidar_idx-1]['pose'][0,:2], lidar_data[lidar_idx-1]['rpy'][0,2])
 
-
+        particle_update(Particles, Map, lidar_hit, joint_angles)
 
         # Plot
         if lidar_idx%50==0:
