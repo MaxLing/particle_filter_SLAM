@@ -22,7 +22,7 @@ def main():
 
     for lidar_idx in range(len(lidar_data)):
         Pose = Particles['poses'][:, Particles['best_idx']] # TODO: only the best particle is used
-        Trajectory.append(Pose)
+        Trajectory.append(np.copy(Pose))
 
         # Mapping
         # extract lidar scan in good range and transform to lidar's cart coordinate
@@ -36,7 +36,7 @@ def main():
 
         # transform hit from lidar to world coordinate, remove ground hitting
         world_hit = lidar2world(lidar_hit, joint_angles, Pose)
-        not_floor = world_hit[2,:]>0.1
+        not_floor = world_hit[2]>0.1
         world_hit = world_hit[:,not_floor]
 
         # update map according to hit
@@ -54,7 +54,7 @@ def main():
 
         # Plot
         if lidar_idx%50==0:
-            plot_all(Map, Trajectory, Plot)
+            plot_all(Map, Trajectory, world_hit, Plot)
 
 
 def data_preprocess(joint_dir, lidar_dir):
@@ -95,7 +95,7 @@ def init_SLAM():
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
     Particles['best_idx'] = 0
-    Particles['noise_cov'] = [0.005, 0.005, 0.005]
+    Particles['noise_cov'] = [0.001, 0.001, 0.001]
 
     Trajectory = []
 

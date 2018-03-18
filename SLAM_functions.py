@@ -50,7 +50,7 @@ def lidar2world(lidar_hit, joint_angles, pose):
 
 def world2map(xy, Map):
     # transform origin from center to upper left, meter to pixel
-    xy[1] *= -1
+    # xy[1] *= -1 # not sure why, but world y is already downward
     pixels = ((xy + Map['size']/2)*Map['res']).astype(np.int)
 
     # check boundary and keep pixels within
@@ -87,7 +87,7 @@ def odom_predict(Particles, curr_xy, curr_theta, prev_xy, prev_theta):
     # apply relative movement and convert to global frame
     R_global = np.array([[np.cos(Particles['poses'][2]), -np.sin(Particles['poses'][2])],
                         [np.sin(Particles['poses'][2]), np.cos(Particles['poses'][2])]])
-    Particles['poses'][:2] = np.squeeze(np.einsum('ijk,il->ilk', R_global, d_xy))
+    Particles['poses'][:2] += np.squeeze(np.einsum('ijk,il->ilk', R_global, d_xy))
     Particles['poses'][2] += d_theta
 
     # apply noise
@@ -95,7 +95,7 @@ def odom_predict(Particles, curr_xy, curr_theta, prev_xy, prev_theta):
     Particles['poses'] += noise.T
 
 
-def plot_all(Map, Trajectory, Plot):
+def plot_all(Map, Trajectory, Lidar, Plot):
     # paint occ, free and und
     occ_mask = Map['map']>Map['occ_thres']
     free_mask = Map['map']<Map['free_thres']
@@ -108,6 +108,10 @@ def plot_all(Map, Trajectory, Plot):
     traj = np.asarray(Trajectory)[:,:2]
     traj_pixel = world2map(traj.T, Map)
     Plot[traj_pixel[1],traj_pixel[0]] = [255,0,0] # blue for trajectory
+
+    # paint lidar
+    lidar_pixel = world2map(Lidar[:2], Map)
+    Plot[lidar_pixel[1], lidar_pixel[0]] = [0, 255, 0]  # green for lidar
 
     # show the plot
     cv2.imshow('SLAM', Plot)
