@@ -134,15 +134,16 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
     corr = np.zeros(Particles['nums'])
     for i in range(Particles['nums']):
         occ = world2map(particles_hit[i,:2,:], Map)
-        corr[i] = np.sum(Map['map'][occ[1],occ[0]])
+        corr[i] = np.sum(Map['map'][occ[1],occ[0]]>Map['occ_thres'])
 
     # update particle weights
     log_weights = np.log(Particles['weights']) + corr
-    log_weights -= np.max(log_weights) - logsumexp(log_weights - np.max(log_weights))
+    log_weights -= np.max(log_weights) + logsumexp(log_weights - np.max(log_weights))
     Particles['weights'] = np.exp(log_weights)
 
     # resampling if necessary
-    n_eff = 1/np.sum(Particles['weights']**2)
+    n_eff = np.sum(Particles['weights'])**2/np.sum(Particles['weights']**2)
+    print(n_eff)
     if n_eff<= Particles['n_eff']:
         particle_resample(Particles)
 

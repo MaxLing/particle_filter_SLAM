@@ -62,8 +62,6 @@ def data_preprocess(joint_dir, lidar_dir):
     joint_data = ld.get_joint(joint_dir)
     lidar_data = ld.get_lidar(lidar_dir)
 
-    #util.replay_lidar(lidar_data)
-
     # get lidar angles
     num_beams = lidar_data[0]['scan'].shape[1]
     lidar_angles = np.linspace(start=-135*np.pi/180, stop=135*np.pi/180, num=num_beams).reshape(1,-1)
@@ -85,8 +83,8 @@ def init_SLAM():
     belief = 0.7 # prob of lidar hit if the grid is occupied
     Map['occ_d'] = np.log(belief/(1-belief))
     Map['free_d'] = np.log((1-belief)/belief)*.5
-    occ_thres = 0.85
-    free_thres = 0.25
+    occ_thres = 0.8
+    free_thres = 0.3
     Map['occ_thres'] = np.log(occ_thres / (1 - occ_thres))
     Map['free_thres'] = np.log(free_thres/(1-free_thres))
     Map['bound'] = 10
@@ -95,7 +93,7 @@ def init_SLAM():
     Particles['nums'] = 100
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['noise_cov'] = [0.01, 0.01, 0.01]
+    Particles['noise_cov'] = [0.0001, 0.0001, 0.0001]
     Particles['n_eff'] = .1*Particles['nums']
 
     Trajectory = []
