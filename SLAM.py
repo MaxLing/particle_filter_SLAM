@@ -21,7 +21,7 @@ def main():
     Plot = np.zeros((h,w,3),np.uint8)
 
     for lidar_idx in range(len(lidar_data)):
-        Pose = Particles['poses'][:, Particles['best_idx']] # TODO: change idx to argmax
+        Pose = Particles['poses'][:, np.argmax(Particles['weights'])]
         Trajectory.append(np.copy(Pose))
 
         # Mapping
@@ -95,7 +95,6 @@ def init_SLAM():
     Particles['nums'] = 10
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['best_idx'] = 0
     Particles['noise_cov'] = [0.001, 0.001, 0.001]
 
     Trajectory = []

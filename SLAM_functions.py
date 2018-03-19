@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from scipy.special import logsumexp
 
 def polar2cart(scan, angles):
     x = scan * np.cos(angles)
@@ -56,7 +57,7 @@ def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
     else: # for particles update
         nums = Particles['nums']
         poses = Particles['poses']
-        particles_hit = np.zeros((nums,3,lidar_hit.shape[1]))
+        particles_hit = []
         lidar_hit = np.vstack((lidar_hit, np.ones((1, lidar_hit.shape[1]))))
 
         for i in range(nums): # TODO: vectorize
@@ -74,9 +75,9 @@ def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
 
             # ground check, keep hits not on ground
             not_floor = world_hit[2] > 0.1
-            particles_hit[i, :, :] = world_hit[:, not_floor]
+            particles_hit.append(world_hit[:, not_floor])
 
-        return particles_hit
+        return np.asarray(particles_hit)
 
 
 def world2map(xy, Map):
@@ -129,6 +130,18 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
     # hit for each particles (particle num,3,beam num)
     particles_hit = lidar2world(lidar_hit, joint_angles, Particles=Particles)
 
+    # compute correlation between map and particle lidar reading TODO: might be wrong
+    corr = np.zeros(Particles['nums'])
+    for i in range(Particles['nums']):
+        occ = world2map(particles_hit[i,:2,:], Map)
+        corr[i] = np.sum(Map['map'][occ[1],occ[0]])
+
+    # update particle weights
+    log_weights = np.log(Particles['weights']) + corr
+    log_weights -= np.max(log_weights) - logsumexp(log_weights - np.max(log_weights))
+    Particles['weight'] = np.exp(log_weights)
+
+    # TODO: resampling
 
 
 def plot_all(Map, Trajectory, Lidar, Plot):
