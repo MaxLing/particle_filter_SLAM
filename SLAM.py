@@ -93,7 +93,7 @@ def init_SLAM():
     Particles['nums'] = 100
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['noise_cov'] = [0.0001, 0.0001, 0.0001]
+    Particles['noise_cov'] = [0.0005, 0.0005, 0.05]
     Particles['n_eff'] = .1*Particles['nums']
 
     Trajectory = []

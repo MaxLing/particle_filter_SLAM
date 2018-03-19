@@ -82,8 +82,9 @@ def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
 
 def world2map(xy, Map):
     # transform origin from center to upper left, meter to pixel
-    # xy[1] *= -1 # not sure why, but world y is already downward
-    pixels = ((xy + Map['size']/2)*Map['res']).astype(np.int)
+    pixels = np.zeros(xy.shape, dtype=int)
+    pixels[0] = ((xy[0] + Map['size']/2)*Map['res']).astype(np.int)
+    pixels[1] = ((-xy[1] + Map['size'] / 2) * Map['res']).astype(np.int) # y direction changes
 
     # check boundary and keep pixels within
     center = Map['size']*Map['res']/2
