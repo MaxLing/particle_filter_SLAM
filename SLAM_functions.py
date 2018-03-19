@@ -130,7 +130,7 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
     # hit for each particles (particle num,3,beam num)
     particles_hit = lidar2world(lidar_hit, joint_angles, Particles=Particles)
 
-    # compute correlation between map and particle lidar reading TODO: might be wrong
+    # get matching between map and particle lidar reading
     corr = np.zeros(Particles['nums'])
     for i in range(Particles['nums']):
         occ = world2map(particles_hit[i,:2,:], Map)
@@ -139,10 +139,33 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
     # update particle weights
     log_weights = np.log(Particles['weights']) + corr
     log_weights -= np.max(log_weights) - logsumexp(log_weights - np.max(log_weights))
-    Particles['weight'] = np.exp(log_weights)
+    Particles['weights'] = np.exp(log_weights)
 
-    # TODO: resampling
+    # resampling if necessary
+    n_eff = 1/np.sum(Particles['weights']**2)
+    if n_eff<= Particles['n_eff']:
+        particle_resample(Particles)
 
+def particle_resample(Particles):
+    # Stratified resampling reference: http://people.isy.liu.se/rt/schon/Publications/HolSG2006.pdf
+    nums = Particles['nums']
+    # normalize weight and get cum sum
+    weight_sum = np.cumsum(Particles['weights']/np.sum(Particles['weights']))
+
+    # Generate N ordered random numbers
+    random = (np.linspace(0, nums-1, nums) + np.random.uniform(size=nums))/nums
+
+    # multinomial distribution
+    new_sample = np.zeros(Particles['poses'].shape)
+    sample = 0
+    index = 0
+    while(sample<nums):
+        while (weight_sum[index]<random[sample]):
+            index += 1
+        new_sample[:,sample] = Particles['poses'][:,index]
+        sample += 1
+    Particles['poses'] = new_sample
+    Particles['weights'] = np.ones(nums) / nums
 
 def plot_all(Map, Trajectory, Lidar, Plot):
     # paint occ, free and und

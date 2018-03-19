@@ -92,10 +92,11 @@ def init_SLAM():
     Map['bound'] = 10
 
     Particles = {}
-    Particles['nums'] = 10
+    Particles['nums'] = 100
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['noise_cov'] = [0.001, 0.001, 0.001]
+    Particles['noise_cov'] = [0.01, 0.01, 0.01]
+    Particles['n_eff'] = .1*Particles['nums']
 
     Trajectory = []
 
