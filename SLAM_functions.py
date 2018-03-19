@@ -84,7 +84,7 @@ def world2map(xy, Map):
     # transform origin from center to upper left, meter to pixel
     pixels = np.zeros(xy.shape, dtype=int)
     pixels[0] = ((xy[0] + Map['size']/2)*Map['res']).astype(np.int)
-    pixels[1] = ((-xy[1] + Map['size'] / 2) * Map['res']).astype(np.int) # y direction changes
+    pixels[1] = ((-xy[1] + Map['size']/2)*Map['res']).astype(np.int) # y direction changes
 
     # check boundary and keep pixels within
     center = Map['size']*Map['res']/2
@@ -123,7 +123,7 @@ def odom_predict(Particles, curr_xy, curr_theta, prev_xy, prev_theta):
     Particles['poses'][:2] += np.squeeze(np.einsum('ijk,il->ilk', R_global, d_xy))
     Particles['poses'][2] += d_theta
 
-    # apply noise
+    # apply noise # TODO: right way
     noise = np.random.normal([0,0,0],Particles['noise_cov'], size=(Particles['nums'],3))
     Particles['poses'] += noise.T
 
@@ -133,7 +133,7 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
 
     # get matching between map and particle lidar reading
     corr = np.zeros(Particles['nums'])
-    for i in range(Particles['nums']):
+    for i in range(Particles['nums']): # TODO: vectorize
         occ = world2map(particles_hit[i,:2,:], Map)
         corr[i] = np.sum(Map['map'][occ[1],occ[0]]>Map['occ_thres'])
 
@@ -143,12 +143,12 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
     Particles['weights'] = np.exp(log_weights)
 
     # resampling if necessary
+    # Note: there is a trade-off between particle accuracy and n_eff
     n_eff = np.sum(Particles['weights'])**2/np.sum(Particles['weights']**2)
-    print(n_eff)
     if n_eff<= Particles['n_eff']:
         particle_resample(Particles)
 
-def particle_resample(Particles):
+def particle_resample(Particles): #TODO: check if resampling works, while loop
     # Stratified resampling reference: http://people.isy.liu.se/rt/schon/Publications/HolSG2006.pdf
     nums = Particles['nums']
     # normalize weight and get cum sum
@@ -169,7 +169,7 @@ def particle_resample(Particles):
     Particles['poses'] = new_sample
     Particles['weights'] = np.ones(nums) / nums
 
-def plot_all(Map, Trajectory, Lidar, Plot):
+def plot_all(Map, Trajectory, Lidar, Plot, idx = None):
     # paint occ, free and und
     occ_mask = Map['map']>Map['occ_thres']
     free_mask = Map['map']<Map['free_thres']
@@ -187,7 +187,11 @@ def plot_all(Map, Trajectory, Lidar, Plot):
     lidar_pixel = world2map(Lidar[:2], Map)
     Plot[lidar_pixel[1], lidar_pixel[0]] = [0, 255, 0]  # green for lidar
 
-    # show the plot
-    cv2.imshow('SLAM', Plot)
-    cv2.waitKey(10)
+    if idx is None:
+        # show the plot
+        cv2.imshow('SLAM', Plot)
+        cv2.waitKey(10)
+    else:
+        # save the last plot
+        cv2.imwrite('SLAM_'+idx+'.png', Plot)
 

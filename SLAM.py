@@ -6,7 +6,7 @@ from SLAM_functions import *
 
 def main():
     ''' modify this part accordingly '''
-    data_idx = '0'
+    data_idx = '2'
     joint_dir = 'train/data/train_joint'+data_idx
     lidar_dir = 'train/data/train_lidar'+data_idx
 
@@ -54,6 +54,10 @@ def main():
         particle_update(Particles, Map, lidar_hit, joint_angles)
 
         # Plot
+        # last frame
+        if lidar_idx == len(lidar_data)-1:
+            plot_all(Map, Trajectory, world_hit, Plot, idx = data_idx)
+        # update normal frame in a frequency
         if lidar_idx%50==0:
             plot_all(Map, Trajectory, world_hit, Plot)
 
@@ -93,7 +97,7 @@ def init_SLAM():
     Particles['nums'] = 100
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['noise_cov'] = [0.0005, 0.0005, 0.05]
+    Particles['noise_cov'] = [0.01, 0.01, 0.05]
     Particles['n_eff'] = .1*Particles['nums']
 
     Trajectory = []
