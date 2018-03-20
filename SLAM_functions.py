@@ -60,7 +60,7 @@ def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
         particles_hit = []
         lidar_hit = np.vstack((lidar_hit, np.ones((1, lidar_hit.shape[1]))))
 
-        for i in range(nums): # TODO: vectorize
+        for i in range(nums):
             # body wrt world
             T_gb = np.array([[1, 0, 0, poses[0,i]], [0, 1, 0, poses[1,i]], [0, 0, 1, 0.93], [0, 0, 0, 1]])
             R_gb = np.array([[np.cos(poses[2,i]), -np.sin(poses[2,i]), 0, 0],
@@ -77,7 +77,7 @@ def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
             not_floor = world_hit[2] > 0.1
             particles_hit.append(world_hit[:, not_floor])
 
-        return np.asarray(particles_hit)
+        return np.transpose(np.asarray(particles_hit), (1,2,0))
 
 
 def world2map(xy, Map):
@@ -123,9 +123,15 @@ def odom_predict(Particles, curr_xy, curr_theta, prev_xy, prev_theta):
     Particles['poses'][:2] += np.squeeze(np.einsum('ijk,il->ilk', R_global, d_xy))
     Particles['poses'][2] += d_theta
 
-    # apply noise # TODO: right way
-    noise = np.random.normal([0,0,0],Particles['noise_cov'], size=(Particles['nums'],3))
-    Particles['poses'] += noise.T
+    # apply noise
+    # noise = np.random.normal([0,0,0],Particles['noise_cov'], size=(Particles['nums'],3))
+    noise = np.random.multivariate_normal([0,0,0], np.diag(Particles['noise_cov']), size=Particles['nums'])
+    Particles['poses'] += noise.T # slightly incorrect but faster
+    # R_global = np.array([[np.cos(Particles['poses'][2]), -np.sin(Particles['poses'][2])],
+    #                      [np.sin(Particles['poses'][2]), np.cos(Particles['poses'][2])]])
+    # Particles['poses'][:2] += np.squeeze(np.einsum('ijk,ik->jk', R_global, noise.T[:2]))
+    # Particles['poses'][2] += noise.T[2]
+
 
 def particle_update(Particles, Map, lidar_hit, joint_angles):
     # hit for each particles (particle num,3,beam num)
@@ -133,8 +139,8 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
 
     # get matching between map and particle lidar reading
     corr = np.zeros(Particles['nums'])
-    for i in range(Particles['nums']): # TODO: vectorize
-        occ = world2map(particles_hit[i,:2,:], Map)
+    for i in range(Particles['nums']):
+        occ = world2map(particles_hit[:2,:,i], Map)
         corr[i] = np.sum(Map['map'][occ[1],occ[0]]>Map['occ_thres'])
 
     # update particle weights
@@ -145,10 +151,11 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
     # resampling if necessary
     # Note: there is a trade-off between particle accuracy and n_eff
     n_eff = np.sum(Particles['weights'])**2/np.sum(Particles['weights']**2)
+    print('n_eff: ', n_eff) #TODO: how to get higher n_eff
     if n_eff<= Particles['n_eff']:
         particle_resample(Particles)
 
-def particle_resample(Particles): #TODO: check if resampling works, while loop
+def particle_resample(Particles):
     # Stratified resampling reference: http://people.isy.liu.se/rt/schon/Publications/HolSG2006.pdf
     nums = Particles['nums']
     # normalize weight and get cum sum
@@ -168,6 +175,13 @@ def particle_resample(Particles): #TODO: check if resampling works, while loop
         sample += 1
     Particles['poses'] = new_sample
     Particles['weights'] = np.ones(nums) / nums
+
+    # same speed
+    # sums, randoms = np.meshgrid(weight_sum, random)
+    # diff = sums-randoms
+    # diff[diff<0]=1
+    # new_sample = Particles['poses'][:,np.argmin(diff,axis=1)]
+
 
 def plot_all(Map, Trajectory, Lidar, Plot, idx = None):
     # paint occ, free and und
