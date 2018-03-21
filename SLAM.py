@@ -1,7 +1,5 @@
-import cv2
 import numpy as np
 import load_data as ld
-import p4_util as util
 from SLAM_functions import *
 
 def main():
@@ -35,7 +33,7 @@ def main():
         joint_angles = joint_data['head_angles'][:,joint_idx]
 
         # transform hit from lidar to world coordinate, this step also remove ground hitting
-        world_hit = lidar2world(lidar_hit, joint_angles, pose=Pose)
+        world_hit = lidar2world(lidar_hit, joint_angles, lidar_data[lidar_idx]['rpy'][0,:2], pose=Pose)
 
         # update map according to hit
         update_map(world_hit[:2], Pose[:2], Map)
@@ -51,7 +49,7 @@ def main():
                      lidar_data[lidar_idx-1]['pose'][0,:2], lidar_data[lidar_idx-1]['rpy'][0,2])
 
         # update particles by lidar
-        particle_update(Particles, Map, lidar_hit, joint_angles)
+        particle_update(Particles, Map, lidar_hit, joint_angles, lidar_data[lidar_idx]['rpy'][0,:2])
 
         # Plot
         # last frame
@@ -87,17 +85,17 @@ def init_SLAM():
     belief = 0.7 # prob of lidar hit if the grid is occupied
     Map['occ_d'] = np.log(belief/(1-belief))
     Map['free_d'] = np.log((1-belief)/belief)*.5
-    occ_thres = 0.8
-    free_thres = 0.3
+    occ_thres = 0.9
+    free_thres = 0.2
     Map['occ_thres'] = np.log(occ_thres / (1 - occ_thres))
     Map['free_thres'] = np.log(free_thres/(1-free_thres))
-    Map['bound'] = 10
+    Map['bound'] = 100
 
     Particles = {}
-    Particles['nums'] = 100
+    Particles['nums'] = 200
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['noise_cov'] = [0.005, 0.005, 0.005] # [0.01, 0.01, 0.01]
+    Particles['noise_cov'] = [0.005, 0.005, 0.005] # [0.005, 0.005, 0.005]
     Particles['n_eff'] = .1*Particles['nums']
 
     Trajectory = []

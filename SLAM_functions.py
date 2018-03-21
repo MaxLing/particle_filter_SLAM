@@ -8,9 +8,11 @@ def polar2cart(scan, angles):
     z = np.zeros(len(scan))
     return np.vstack((x, y, z))
 
-def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
+def lidar2world(lidar_hit, joint_angles, body_angles, pose=None, Particles=None):
     neck_angle = joint_angles[0] # yaw wrt body frame
     head_angle = joint_angles[1] # pitch wrt body frame
+    roll_gb = body_angles[0]
+    pitch_gb = body_angles[1]
 
     # lidar wrt head
     z_hl = 0.15
@@ -40,7 +42,15 @@ def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
         R_gb = np.array([[np.cos(yaw_gb), -np.sin(yaw_gb), 0, 0],
                         [np.sin(yaw_gb), np.cos(yaw_gb), 0, 0],
                         [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
+                        [0, 0, 0, 1]])\
+            .dot(np.array([[np.cos(pitch_gb), 0, np.sin(pitch_gb), 0],
+                        [0, 1, 0, 0],
+                        [-np.sin(pitch_gb), 0, np.cos(pitch_gb), 0],
+                        [0, 0, 0, 1]]))\
+            .dot(np.array([[1, 0, 0, 0],
+                        [0, np.cos(roll_gb), -np.sin(roll_gb), 0],
+                        [0, np.sin(roll_gb), np.cos(roll_gb), 0],
+                        [0, 0, 0, 1]]))
         H_gb = np.dot(T_gb, R_gb)
 
         # lidar wrt world
@@ -66,7 +76,15 @@ def lidar2world(lidar_hit, joint_angles, pose=None, Particles=None):
             R_gb = np.array([[np.cos(poses[2,i]), -np.sin(poses[2,i]), 0, 0],
                             [np.sin(poses[2,i]), np.cos(poses[2,i]), 0, 0],
                             [0, 0, 1, 0],
-                            [0, 0, 0, 1]])
+                            [0, 0, 0, 1]]) \
+                .dot(np.array([[np.cos(pitch_gb), 0, np.sin(pitch_gb), 0],
+                               [0, 1, 0, 0],
+                               [-np.sin(pitch_gb), 0, np.cos(pitch_gb), 0],
+                               [0, 0, 0, 1]])) \
+                .dot(np.array([[1, 0, 0, 0],
+                               [0, np.cos(roll_gb), -np.sin(roll_gb), 0],
+                               [0, np.sin(roll_gb), np.cos(roll_gb), 0],
+                               [0, 0, 0, 1]]))
             H_gb = np.dot(T_gb, R_gb)
 
             # lidar wrt world
@@ -133,17 +151,17 @@ def odom_predict(Particles, curr_xy, curr_theta, prev_xy, prev_theta):
     # Particles['poses'][2] += noise.T[2]
 
 
-def particle_update(Particles, Map, lidar_hit, joint_angles):
+def particle_update(Particles, Map, lidar_hit, joint_angles, body_angles):
     # hit for each particles (particle num,3,beam num)
-    particles_hit = lidar2world(lidar_hit, joint_angles, Particles=Particles)
+    particles_hit = lidar2world(lidar_hit, joint_angles, body_angles, Particles=Particles)
 
     # get matching between map and particle lidar reading
     corr = np.zeros(Particles['nums'])
     for i in range(Particles['nums']):
         occ = world2map(particles_hit[:2,:,i], Map)
         corr[i] = np.sum(Map['map'][occ[1],occ[0]]>Map['occ_thres'])
+    corr /= 10 # by divide, adding a temperature to the softmax function
 
-    corr /= 10 # too large, adding a temperature to the softmax function
     # update particle weights
     log_weights = np.log(Particles['weights']) + corr
     log_weights -= np.max(log_weights) + logsumexp(log_weights - np.max(log_weights))
@@ -159,7 +177,8 @@ def particle_resample(Particles):
     # Stratified resampling reference: http://people.isy.liu.se/rt/schon/Publications/HolSG2006.pdf
     nums = Particles['nums']
     # normalize weight and get cum sum
-    weight_sum = np.cumsum(Particles['weights']/np.sum(Particles['weights']))
+    weight_sum = np.cumsum(Particles['weights'])
+    weight_sum /= weight_sum[-1]
 
     # Generate N ordered random numbers
     random = (np.linspace(0, nums-1, nums) + np.random.uniform(size=nums))/nums
