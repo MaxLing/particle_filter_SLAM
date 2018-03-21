@@ -4,9 +4,9 @@ from SLAM_functions import *
 
 def main():
     ''' modify this part accordingly '''
-    data_idx = 3
-    joint_dir = 'train/data/train_joint'+str(data_idx)
-    lidar_dir = 'train/data/train_lidar'+str(data_idx)
+    data_idx = 1
+    joint_dir = 'data/train_joint'+str(data_idx)
+    lidar_dir = 'data/train_lidar'+str(data_idx)
 
     # load and process data
     joint_data, lidar_data, lidar_angles = data_preprocess(joint_dir, lidar_dir)
