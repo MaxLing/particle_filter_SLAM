@@ -4,7 +4,7 @@ from SLAM_functions import *
 
 def main():
     ''' modify this part accordingly '''
-    data_idx = 3
+    data_idx = 1
     joint_dir = 'train/data/train_joint'+str(data_idx)
     lidar_dir = 'train/data/train_lidar'+str(data_idx)
 
@@ -18,7 +18,8 @@ def main():
     h, w = Map['map'].shape
     Plot = np.zeros((h,w,3),np.uint8)
 
-    for lidar_idx in range(0, len(lidar_data), 5):
+    interval = 2 # we can set a interval, but this is a trade-off of accuracy for speed
+    for lidar_idx in range(0, len(lidar_data), interval):
         Pose = Particles['poses'][:, np.argmax(Particles['weights'])]
         Trajectory.append(np.copy(Pose))
 
@@ -53,7 +54,7 @@ def main():
 
         # Plot
         # last frame
-        if lidar_idx >= len(lidar_data)-5:
+        if lidar_idx >= len(lidar_data)-interval:
             plot_all(Map, Trajectory, world_hit, Plot, idx = data_idx)
         # update normal frame in a frequency
         if lidar_idx%100==0:
@@ -92,7 +93,7 @@ def init_SLAM():
     Map['bound'] = 100
 
     Particles = {}
-    Particles['nums'] = 200
+    Particles['nums'] = 100
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
     Particles['noise_cov'] = [0.005, 0.005, 0.005] # [0.005, 0.005, 0.005]
