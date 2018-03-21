@@ -6,9 +6,9 @@ from SLAM_functions import *
 
 def main():
     ''' modify this part accordingly '''
-    data_idx = '1'
-    joint_dir = 'train/data/train_joint'+data_idx
-    lidar_dir = 'train/data/train_lidar'+data_idx
+    data_idx = 3
+    joint_dir = 'train/data/train_joint'+str(data_idx)
+    lidar_dir = 'train/data/train_lidar'+str(data_idx)
 
     # load and process data
     joint_data, lidar_data, lidar_angles = data_preprocess(joint_dir, lidar_dir)
@@ -20,7 +20,7 @@ def main():
     h, w = Map['map'].shape
     Plot = np.zeros((h,w,3),np.uint8)
 
-    for lidar_idx in range(len(lidar_data)):
+    for lidar_idx in range(0, len(lidar_data), 5):
         Pose = Particles['poses'][:, np.argmax(Particles['weights'])]
         Trajectory.append(np.copy(Pose))
 
@@ -55,7 +55,7 @@ def main():
 
         # Plot
         # last frame
-        if lidar_idx == len(lidar_data)-1:
+        if lidar_idx >= len(lidar_data)-5:
             plot_all(Map, Trajectory, world_hit, Plot, idx = data_idx)
         # update normal frame in a frequency
         if lidar_idx%100==0:
@@ -97,7 +97,7 @@ def init_SLAM():
     Particles['nums'] = 100
     Particles['weights'] = np.ones(Particles['nums']) / Particles['nums']
     Particles['poses'] = np.zeros((3, Particles['nums']))
-    Particles['noise_cov'] = [0.0001, 0.0001, 0.0005]
+    Particles['noise_cov'] = [0.005, 0.005, 0.005] # [0.01, 0.01, 0.01]
     Particles['n_eff'] = .1*Particles['nums']
 
     Trajectory = []

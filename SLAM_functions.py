@@ -143,6 +143,7 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
         occ = world2map(particles_hit[:2,:,i], Map)
         corr[i] = np.sum(Map['map'][occ[1],occ[0]]>Map['occ_thres'])
 
+    corr /= 10 # too large, adding a temperature to the softmax function
     # update particle weights
     log_weights = np.log(Particles['weights']) + corr
     log_weights -= np.max(log_weights) + logsumexp(log_weights - np.max(log_weights))
@@ -151,7 +152,6 @@ def particle_update(Particles, Map, lidar_hit, joint_angles):
     # resampling if necessary
     # Note: there is a trade-off between particle accuracy and n_eff
     n_eff = np.sum(Particles['weights'])**2/np.sum(Particles['weights']**2)
-    print('n_eff: ', n_eff) #TODO: how to get higher n_eff
     if n_eff<= Particles['n_eff']:
         particle_resample(Particles)
 
@@ -207,5 +207,5 @@ def plot_all(Map, Trajectory, Lidar, Plot, idx = None):
         cv2.waitKey(10)
     else:
         # save the last plot
-        cv2.imwrite('SLAM_'+idx+'.png', Plot)
+        cv2.imwrite('SLAM_'+str(idx)+'.png', Plot)
 
