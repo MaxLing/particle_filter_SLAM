@@ -13,6 +13,7 @@ def lidar2world(lidar_hit, joint_angles, body_angles, pose=None, Particles=None)
     head_angle = joint_angles[1] # pitch wrt body frame
     roll_gb = body_angles[0]
     pitch_gb = body_angles[1]
+    yaw_gb = body_angles[2] # using imu's yaw has better performance than pose's yaw
 
     # lidar wrt head
     z_hl = 0.15
@@ -38,7 +39,7 @@ def lidar2world(lidar_hit, joint_angles, body_angles, pose=None, Particles=None)
         y_gb = pose[1]
         z_gb = 0.93
         T_gb = np.array([[1, 0, 0, x_gb], [0, 1, 0, y_gb], [0, 0, 1, z_gb], [0, 0, 0, 1]])
-        yaw_gb = pose[2]
+        # yaw_gb = pose[2]
         R_gb = np.array([[np.cos(yaw_gb), -np.sin(yaw_gb), 0, 0],
                         [np.sin(yaw_gb), np.cos(yaw_gb), 0, 0],
                         [0, 0, 1, 0],
@@ -73,8 +74,9 @@ def lidar2world(lidar_hit, joint_angles, body_angles, pose=None, Particles=None)
         for i in range(nums):
             # body wrt world
             T_gb = np.array([[1, 0, 0, poses[0,i]], [0, 1, 0, poses[1,i]], [0, 0, 1, 0.93], [0, 0, 0, 1]])
-            R_gb = np.array([[np.cos(poses[2,i]), -np.sin(poses[2,i]), 0, 0],
-                            [np.sin(poses[2,i]), np.cos(poses[2,i]), 0, 0],
+            # yaw_gb = poses[2,i]
+            R_gb = np.array([[np.cos(yaw_gb), -np.sin(yaw_gb), 0, 0],
+                            [np.sin(yaw_gb), np.cos(yaw_gb), 0, 0],
                             [0, 0, 1, 0],
                             [0, 0, 0, 1]]) \
                 .dot(np.array([[np.cos(pitch_gb), 0, np.sin(pitch_gb), 0],

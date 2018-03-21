@@ -4,7 +4,7 @@ from SLAM_functions import *
 
 def main():
     ''' modify this part accordingly '''
-    data_idx = 1
+    data_idx = 3
     joint_dir = 'train/data/train_joint'+str(data_idx)
     lidar_dir = 'train/data/train_lidar'+str(data_idx)
 
@@ -18,7 +18,7 @@ def main():
     h, w = Map['map'].shape
     Plot = np.zeros((h,w,3),np.uint8)
 
-    interval = 2 # we can set a interval, but this is a trade-off of accuracy for speed
+    interval = 5 # interval is a trade-off of accuracy for speed
     for lidar_idx in range(0, len(lidar_data), interval):
         Pose = Particles['poses'][:, np.argmax(Particles['weights'])]
         Trajectory.append(np.copy(Pose))
@@ -34,7 +34,7 @@ def main():
         joint_angles = joint_data['head_angles'][:,joint_idx]
 
         # transform hit from lidar to world coordinate, this step also remove ground hitting
-        world_hit = lidar2world(lidar_hit, joint_angles, lidar_data[lidar_idx]['rpy'][0,:2], pose=Pose)
+        world_hit = lidar2world(lidar_hit, joint_angles, lidar_data[lidar_idx]['rpy'][0,:], pose=Pose)
 
         # update map according to hit
         update_map(world_hit[:2], Pose[:2], Map)
@@ -50,7 +50,7 @@ def main():
                      lidar_data[lidar_idx-1]['pose'][0,:2], lidar_data[lidar_idx-1]['rpy'][0,2])
 
         # update particles by lidar
-        particle_update(Particles, Map, lidar_hit, joint_angles, lidar_data[lidar_idx]['rpy'][0,:2])
+        particle_update(Particles, Map, lidar_hit, joint_angles, lidar_data[lidar_idx]['rpy'][0,:])
 
         # Plot
         # last frame
