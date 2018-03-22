@@ -47,10 +47,11 @@ def main():
 
         # predict particles pose by odom
         odom_predict(Particles, lidar_data[lidar_idx]['pose'][0,:2], lidar_data[lidar_idx]['rpy'][0,2],
-                     lidar_data[lidar_idx-1]['pose'][0,:2], lidar_data[lidar_idx-1]['rpy'][0,2])
+                     lidar_data[lidar_idx-interval]['pose'][0,:2], lidar_data[lidar_idx-interval]['rpy'][0,2])
 
         # update particles by lidar
         particle_update(Particles, Map, lidar_hit, joint_angles, lidar_data[lidar_idx]['rpy'][0,:])
+
 
         # Plot
         # last frame
@@ -90,7 +91,7 @@ def init_SLAM():
     free_thres = 0.2
     Map['occ_thres'] = np.log(occ_thres / (1 - occ_thres))
     Map['free_thres'] = np.log(free_thres/(1-free_thres))
-    Map['bound'] = 100
+    Map['bound'] = 100 # allow log odds recovery
 
     Particles = {}
     Particles['nums'] = 100
