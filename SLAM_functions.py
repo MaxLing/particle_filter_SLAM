@@ -108,7 +108,7 @@ def world2map(xy, Map):
 
     # check boundary and keep pixels within
     center = Map['size']*Map['res']/2
-    in_bound = np.logical_and(np.abs(pixels[0]-center) <= center, np.abs(pixels[1]-center) <= center)
+    in_bound = np.logical_and(np.abs(pixels[0]-center) < center, np.abs(pixels[1]-center) < center)
     pixels = pixels[:,in_bound]
 
     return pixels
